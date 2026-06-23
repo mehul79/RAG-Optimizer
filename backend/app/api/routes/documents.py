@@ -4,13 +4,12 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import settings
-from app.models.db import DocumentSet
+from app.models.db import DocumentSet, Experiment, QueryBatch
 from app.models.schemas import DocumentSetResponse
 from app.services import vector_store as vs
 from app.services.ingestion import _PIPELINES, index_document_set, parse_document
@@ -115,9 +114,8 @@ async def delete_document(doc_set_id: str, db: AsyncSession = Depends(get_db)):
     for pipeline in _PIPELINES:
         await vs.delete_collection(f"{doc_set_id}_{pipeline.pipeline_id}")
 
+    # Cascade: experiments → pipeline_runs → evaluations (DB-level ON DELETE CASCADE)
+    await db.execute(delete(Experiment).where(Experiment.document_set_id == doc_set_id))
+    await db.execute(delete(QueryBatch).where(QueryBatch.document_set_id == doc_set_id))
     await db.delete(ds)
-    try:
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-        raise HTTPException(409, "Document set has experiments and cannot be deleted")
+    await db.commit()

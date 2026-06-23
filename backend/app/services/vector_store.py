@@ -48,6 +48,26 @@ async def search(collection: str, vector: list[float], top_k: int) -> list[str]:
     return [hit.payload.get("text", "") for hit in result.points]
 
 
+async def scroll_chunks(collection: str) -> list[str]:
+    """All chunk texts in original document order."""
+    client = _get_client()
+    points: list = []
+    offset = None
+    while True:
+        batch, offset = await client.scroll(
+            collection_name=collection,
+            limit=256,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+        points.extend(batch)
+        if offset is None:
+            break
+    points.sort(key=lambda p: p.payload.get("chunk_index", 0))
+    return [p.payload.get("text", "") for p in points]
+
+
 async def delete_collection(name: str) -> None:
     client = _get_client()
     existing = await client.get_collections()

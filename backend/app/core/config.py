@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     max_upload_size_mb: int = 50
 
-    # RAGAS
-    ragas_llm_model: str = "openai/gpt-4o-mini"
+    # RAGAS — judge model decides pipeline rankings, so it stays on the stronger tier
+    ragas_llm_model: str = "deepseek/deepseek-v4-pro"
 
 
 settings = Settings()

@@ -7,7 +7,7 @@ class PipelineB(BasePipeline):
     pipeline_id = "B"
     vector_dim = 1536
     top_k = 5
-    generator_model = "openai/gpt-4o-mini"
+    generator_model = "deepseek/deepseek-v4-flash"
 
     chunker = FixedChunker(chunk_size=512, overlap=50)
     embedder = OpenAIEmbedder(model="text-embedding-ada-002")

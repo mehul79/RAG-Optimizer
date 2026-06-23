@@ -8,7 +8,7 @@ class PipelineD(BasePipeline):
     pipeline_id = "D"
     vector_dim = 3072
     top_k = 10        # retrieve 10, rerank → top 3
-    generator_model = "openai/gpt-4o-mini"
+    generator_model = "deepseek/deepseek-v4-flash"
 
     chunker = SemanticChunker(threshold=0.5)
     embedder = OpenAIEmbedder(model="text-embedding-3-large")

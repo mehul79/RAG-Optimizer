@@ -51,25 +51,26 @@ async def run_experiment(experiment_id: str, doc_set_id: str, query: str) -> Non
         except Exception as e:
             err = {"type": "pipeline_error", "pipeline_id": pipeline.pipeline_id, "error": str(e)}
             await redis.publish(channel, json.dumps(err))
-            return None
+            return {"pipeline_id": pipeline.pipeline_id, "error": str(e)}
 
     # Run all 4 pipelines concurrently
-    results = await asyncio.gather(*[run_and_notify(p) for p in _PIPELINES])
-    results = [r for r in results if r is not None]
+    all_results = await asyncio.gather(*[run_and_notify(p) for p in _PIPELINES])
+    results = [r for r in all_results if "error" not in r]
 
-    # Persist pipeline runs
+    # Persist pipeline runs — failed ones too, so errors survive a reload
     run_ids: dict[str, str] = {}
     async with AsyncSessionLocal() as session:
-        for r in results:
+        for r in all_results:
             run = PipelineRun(
                 experiment_id=experiment_id,
                 pipeline_id=r["pipeline_id"],
-                answer=r["answer"],
-                retrieved_chunks=r["retrieved_chunks"],
-                prompt_tokens=r["prompt_tokens"],
-                completion_tokens=r["completion_tokens"],
-                latency_ms=r["latency_ms"],
-                cost_usd=r["cost_usd"],
+                answer=r.get("answer"),
+                retrieved_chunks=r.get("retrieved_chunks"),
+                prompt_tokens=r.get("prompt_tokens"),
+                completion_tokens=r.get("completion_tokens"),
+                latency_ms=r.get("latency_ms"),
+                cost_usd=r.get("cost_usd"),
+                error=r.get("error"),
             )
             session.add(run)
             await session.flush()

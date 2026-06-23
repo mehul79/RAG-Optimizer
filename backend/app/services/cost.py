@@ -5,6 +5,8 @@ _LLM_PRICES: dict[str, tuple[float, float]] = {
     "openai/gpt-4o-mini": (0.15, 0.60),
     "openai/gpt-4o": (2.50, 10.00),
     "meta-llama/llama-3.3-70b-instruct": (0.0, 0.0),  # free tier
+    "deepseek/deepseek-v4-flash": (0.084, 0.168),
+    "deepseek/deepseek-v4-pro": (0.435, 0.87),
 }
 
 # USD per 1M embedding tokens

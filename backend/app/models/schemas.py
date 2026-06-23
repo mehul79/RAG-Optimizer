@@ -41,6 +41,7 @@ class PipelineRunResponse(BaseModel):
     completion_tokens: int | None
     latency_ms: int | None
     cost_usd: float | None
+    error: str | None = None
     evaluation: EvaluationResponse | None
 
     model_config = {"from_attributes": True}
@@ -61,6 +62,43 @@ class ExperimentResponse(BaseModel):
 class ExperimentCreatedResponse(BaseModel):
     experiment_id: str
     status: str
+
+
+# ── Query Batches ─────────────────────────────────────────────────────────────
+
+class QueryBatchCreate(BaseModel):
+    document_set_id: str
+    count: int = 10  # capped 5-20 in the route
+
+
+class PipelineRollup(BaseModel):
+    pipeline_id: str
+    win_count: int
+    avg_faithfulness: float | None
+    avg_answer_relevancy: float | None
+    avg_context_precision: float | None
+    avg_overall_score: float | None
+    total_cost_usd: float
+
+
+class QueryBatchResponse(BaseModel):
+    id: str
+    document_set_id: str
+    status: str
+    question_count: int
+    completed_count: int
+    created_at: datetime
+    rollup: list[PipelineRollup]
+    experiments: list[ExperimentResponse] = []
+
+
+class QueryBatchCreatedResponse(BaseModel):
+    batch_id: str
+    status: str
+
+
+class QueryBatchQuestionsUpdate(BaseModel):
+    questions: list[str]
 
 
 # ── Settings ──────────────────────────────────────────────────────────────

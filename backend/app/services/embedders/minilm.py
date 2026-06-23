@@ -1,3 +1,4 @@
+import asyncio
 from typing import TYPE_CHECKING
 
 from app.services.embedders.base import BaseEmbedder
@@ -21,7 +22,15 @@ class MiniLMEmbedder(BaseEmbedder):
     vector_dim = 384
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return _get_model().encode(texts, normalize_embeddings=True).tolist()
+        loop = asyncio.get_running_loop()
+        vectors = await loop.run_in_executor(
+            None, lambda: _get_model().encode(texts, normalize_embeddings=True)
+        )
+        return vectors.tolist()
 
     async def embed_query(self, text: str) -> list[float]:
-        return _get_model().encode(text, normalize_embeddings=True).tolist()
+        loop = asyncio.get_running_loop()
+        vector = await loop.run_in_executor(
+            None, lambda: _get_model().encode(text, normalize_embeddings=True)
+        )
+        return vector.tolist()

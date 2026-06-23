@@ -41,17 +41,31 @@ class PipelineIndex(Base):
     document_set: Mapped["DocumentSet"] = relationship(back_populates="pipeline_indexes")
 
 
+class QueryBatch(Base):
+    __tablename__ = "query_batches"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    document_set_id: Mapped[str] = mapped_column(ForeignKey("document_sets.id"))
+    status: Mapped[str] = mapped_column(String, default="generating")  # generating | running | complete | failed
+    question_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    experiments: Mapped[list["Experiment"]] = relationship(back_populates="batch")
+
+
 class Experiment(Base):
     __tablename__ = "experiments"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     document_set_id: Mapped[str] = mapped_column(ForeignKey("document_sets.id"))
+    batch_id: Mapped[str | None] = mapped_column(ForeignKey("query_batches.id", ondelete="SET NULL"), nullable=True)
     query: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String, default="running")  # running | complete | failed
     winner_pipeline: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     document_set: Mapped["DocumentSet"] = relationship(back_populates="experiments")
+    batch: Mapped["QueryBatch | None"] = relationship(back_populates="experiments")
     pipeline_runs: Mapped[list["PipelineRun"]] = relationship(back_populates="experiment", cascade="all, delete-orphan")
 
 
@@ -68,6 +82,7 @@ class PipelineRun(Base):
     embedding_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     experiment: Mapped["Experiment"] = relationship(back_populates="pipeline_runs")
