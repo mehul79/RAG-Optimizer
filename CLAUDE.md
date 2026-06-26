@@ -24,7 +24,7 @@ Compares 4 RAG pipeline configurations (different chunking, embedding, and reran
 uv sync
 
 # Run dev server (from /backend)
-uv run uvicorn app.main:app --reload --port 8000
+uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8082 --reload
 
 # Add a dependency
 uv add <package>
@@ -45,7 +45,7 @@ uv run mypy app/
 npm install
 
 # Run dev server
-npm run dev  # starts on :3000
+npm run dev  # starts on :3031
 
 # Build for production
 npm run build
@@ -96,7 +96,7 @@ COHERE_API_KEY=...               # dashboard.cohere.com — Pipeline C embed + r
 
 Required in `frontend/.env.local`:
 ```
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8082
 ```
 
 ## Coding Conventions

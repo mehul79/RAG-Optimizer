@@ -62,9 +62,10 @@ docker-compose up -d
 ```bash
 cd backend
 uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --port 8000
+uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8082 --reload
 ```
+
+No Alembic — tables are created automatically via `Base.metadata.create_all` on backend startup.
 
 ### 4. Run frontend
 
@@ -72,13 +73,13 @@ uv run uvicorn app.main:app --reload --port 8000
 cd frontend
 npm install
 npm run dev
-# Open http://localhost:3000
+# Open http://localhost:3031
 ```
 
 ## Architecture
 
 ```
-Next.js (3000) → FastAPI (8000) → 4 async pipelines → GPT-4o judge
+Next.js (3031) → FastAPI (8082) → 4 async pipelines → LLM judge
                                         ↓                    ↓
                                    Qdrant (6333)       PostgreSQL (5432)
                                    Redis (6379)
