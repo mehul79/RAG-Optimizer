@@ -30,6 +30,14 @@ def _extract_zip(content: bytes) -> list[tuple[str, bytes]]:
                 if name.endswith("/") or "__MACOSX" in name or Path(name).name.startswith("."):
                     continue
                 if Path(name).suffix.lower() in _ALLOWED:
+                    info = zf.getinfo(name)
+                    if info.file_size > settings.max_upload_size_mb * 1024 * 1024:
+                        logger.warning(
+                            "Skipping %s — uncompressed size %d bytes exceeds limit",
+                            name,
+                            info.file_size,
+                        )
+                        continue
                     results.append((Path(name).name, zf.read(name)))
             return results
     except zipfile.BadZipFile:
@@ -68,7 +76,10 @@ async def upload_document(
         text = "\n\n---\n\n".join(texts)
         doc_set = DocumentSet(name=file.filename or "upload.zip", file_count=len(texts))
     else:
-        text = parse_document(content, file.filename or "upload")
+        try:
+            text = parse_document(content, file.filename or "upload")
+        except Exception as e:
+            raise HTTPException(422, f"Could not parse file: {e}") from e
         doc_set = DocumentSet(name=file.filename or "upload", file_count=1)
 
     db.add(doc_set)
