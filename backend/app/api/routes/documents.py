@@ -1,3 +1,4 @@
+import logging
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -11,6 +12,8 @@ from app.core.config import settings
 from app.models.db import DocumentSet
 from app.models.schemas import DocumentSetResponse
 from app.services.ingestion import index_document_set, parse_document
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -56,8 +59,8 @@ async def upload_document(
         for fname, fbytes in entries:
             try:
                 texts.append(parse_document(fbytes, fname))
-            except Exception:
-                pass  # skip files that fail to parse
+            except Exception as e:
+                logger.warning("Skipping %s in ZIP — parse failed: %s", fname, e)
 
         if not texts:
             raise HTTPException(400, "ZIP contained no parseable text")
