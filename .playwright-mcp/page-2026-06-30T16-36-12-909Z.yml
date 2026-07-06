@@ -1,0 +1,49 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "RAG Optimizer" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e5]
+        - generic [ref=e7]: RAG Optimizer
+      - generic [ref=e8]:
+        - link "Settings" [ref=e9] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e10]
+          - text: Settings
+        - link "History" [ref=e12] [cursor=pointer]:
+          - /url: /experiments
+          - img [ref=e13]
+          - text: History
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - heading "Settings" [level=1] [ref=e18]
+      - paragraph [ref=e19]: Configure API keys for LLM generation and embeddings.
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - img [ref=e23]
+        - generic [ref=e25]:
+          - paragraph [ref=e26]: OpenRouter API Key
+          - paragraph [ref=e27]: Powers LLM generation (all pipelines) and OpenAI embeddings (B & D) via openrouter.ai
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - textbox "sk-or-..." [ref=e30]
+          - button [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+        - button "Validate" [disabled]
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - img [ref=e37]
+        - generic [ref=e39]:
+          - paragraph [ref=e40]: Cohere API Key
+          - paragraph [ref=e41]: Powers Pipeline C embeddings and reranking via the Cohere SDK
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - textbox "your-cohere-key" [ref=e44]
+          - button [ref=e45] [cursor=pointer]:
+            - img [ref=e46]
+        - button "Validate" [disabled]
+    - generic [ref=e48]:
+      - button "Save Keys" [disabled]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]

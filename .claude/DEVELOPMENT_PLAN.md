@@ -127,22 +127,32 @@ Total: ~17 days for full MVP
 
 ## Phase 4: Evaluation Engine
 
-### GPT-4o Judge
-- [ ] `app/services/evaluator.py` — `EvaluatorAgent`
+### RAGAS Evaluator
+- [ ] Add `ragas`, `datasets` to `pyproject.toml` via `uv add ragas datasets`
+- [ ] `app/services/evaluator.py` — `RagasEvaluator`
   - Receives: `{query, pipeline_runs: [4 × {pipeline_id, answer, chunks}]}`
-  - Shuffles pipeline order before sending to judge (anti-position-bias)
-  - Uses structured output (JSON schema enforcement via OpenAI response_format)
-  - Parses response, maps back to correct pipeline_ids
-  - Writes `Evaluation` rows to PostgreSQL
+  - Runs `ragas.evaluate()` independently per pipeline (no shared prompt, no position bias)
+  - Metrics: `faithfulness`, `answer_relevancy`, `context_precision` (all reference-free)
+  - Configure RAGAS to use `gpt-4o-mini` as the underlying LLM for cost control
+  - Writes `Evaluation` rows to PostgreSQL (scores stored as 0–1 floats, ×10 for display)
 
-### Evaluation Prompt
-```
-You are an impartial RAG evaluation judge. 
-Given a question and 4 pipeline responses (in random order), 
-score each on faithfulness (0-10), answer_relevance (0-10), 
-and context_precision (0-10).
-[Detailed rubric for each metric]
-Respond ONLY with the JSON schema provided.
+```python
+from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy, context_precision
+from ragas.llms import LangchainLLMWrapper
+from langchain_openai import ChatOpenAI
+from datasets import Dataset
+
+ragas_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o-mini"))
+
+async def evaluate_pipeline(query, answer, chunk_texts):
+    dataset = Dataset.from_dict({
+        "question": [query],
+        "answer":   [answer],
+        "contexts": [chunk_texts],
+    })
+    result = evaluate(dataset, metrics=[faithfulness, answer_relevancy, context_precision], llm=ragas_llm)
+    return result  # dict with float scores 0–1
 ```
 
 ### Cost Calculator

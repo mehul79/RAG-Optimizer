@@ -35,10 +35,10 @@
 │     └──────────────┴──────┬───────┴─────────────┘              │
 │                           │                                      │
 │  ┌────────────────────────▼────────────────────────────────┐    │
-│  │               Evaluator Agent                            │    │
-│  │     GPT-4o as LLM Judge (structured JSON output)        │    │
-│  │     Scores: faithfulness, relevance, precision, cost     │    │
-│  │     Anti-bias: randomized pipeline order in prompt       │    │
+│  │               Evaluator (RAGAS)                          │    │
+│  │     ragas.evaluate() per pipeline — no shared prompt     │    │
+│  │     Metrics: faithfulness, answer_relevancy, ctx_prec    │    │
+│  │     4 pipelines × 3 metrics = 12 LLM calls/experiment   │    │
 │  └────────────────────────┬────────────────────────────────┘    │
 └───────────────────────────┼──────────────────────────────────────┘
                             │
@@ -80,37 +80,43 @@ Spawns 4 concurrent coroutines, one per pipeline. Each coroutine:
 5. Record tokens used, latency, cost
 6. Push SSE event: `{pipeline: "C", status: "complete", answer: "..."}`
 
-### 3. Evaluator Agent (`backend/app/services/evaluator.py`)
+### 3. Evaluator (`backend/app/services/evaluator.py`)
 
-After all 4 pipelines complete, calls GPT-4o with a structured evaluation prompt. The prompt presents all 4 answers in **randomized order** (to avoid position bias) and requests JSON output:
+After all 4 pipelines complete, runs RAGAS evaluation independently per pipeline. No single-judge prompt — each pipeline's (question, answer, contexts) triple is scored in isolation, eliminating position bias by design.
 
-```json
-{
-  "evaluations": [
-    {
-      "pipeline_id": "C",
-      "faithfulness": 8.5,
-      "answer_relevance": 9.0,
-      "context_precision": 7.5,
-      "reasoning": "Answer is grounded in chunks 2 and 4..."
-    }
-  ]
-}
+```python
+from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy, context_precision
+from datasets import Dataset
+
+dataset = Dataset.from_dict({
+    "question": [query],
+    "answer":   [pipeline_answer],
+    "contexts": [retrieved_chunk_texts],  # list of strings
+})
+result = evaluate(dataset, metrics=[faithfulness, answer_relevancy, context_precision])
+# result["faithfulness"], result["answer_relevancy"], result["context_precision"] → 0–1 floats
 ```
+
+RAGAS makes separate LLM calls per metric (configurable model, defaults to OpenAI). With 4 pipelines × 3 metrics = 12 evaluation calls per experiment. Scores are 0–1 floats (multiply by 10 for display parity with original design).
 
 ### 4. Cost Calculator (`backend/app/services/cost.py`)
 
 Tracks actual token usage via API responses and applies pricing:
 
-| Model | Input $/1M | Output $/1M | Embed $/1M tokens |
-|-------|-----------|------------|-------------------|
-| GPT-4o | $2.50 | $10.00 | — |
-| GPT-4o-mini | $0.15 | $0.60 | — |
-| OpenAI text-3-small | — | — | $0.02 |
-| OpenAI text-3-large | — | — | $0.13 |
-| Cohere embed-v3 | — | — | $0.10 |
-| Cohere Rerank v3 | — | — | $2.00/1K searches |
-| MiniLM-L6 (local) | $0 | $0 | $0 |
+All API calls route through **OpenRouter** (`https://openrouter.ai/api/v1`) using the OpenAI SDK — just swap `api_key` + `base_url`. Cohere SDK is used directly for Pipeline C (free trial covers dev). Local sentence-transformers for Pipeline A embed and Pipeline D reranker (zero cost).
+
+| Model | Provider | Input $/1M | Output $/1M | Embed $/1M tokens |
+|-------|----------|-----------|------------|-------------------|
+| `openai/gpt-4o-mini` — all generators + RAGAS | OpenRouter → OpenAI | $0.15 | $0.60 | — |
+| `text-embedding-ada-002` — Pipeline B | OpenRouter → OpenAI | — | — | $0.10 |
+| `text-embedding-3-large` — Pipeline D | OpenRouter → OpenAI | — | — | $0.13 |
+| `embed-english-v3.0` — Pipeline C | Cohere SDK (free trial) | — | — | $0.10 |
+| `rerank-english-v3.0` — Pipeline C | Cohere SDK (free trial) | — | — | $2.00/1K searches |
+| `all-MiniLM-L6-v2` embed — Pipeline A | Local sentence-transformers | $0 | $0 | $0 |
+| `ms-marco-MiniLM-L-6-v2` rerank — Pipeline D | Local sentence-transformers | $0 | $0 | $0 |
+
+> **RAGAS evaluation cost**: 4 pipelines × 3 metrics = 12 LLM calls per experiment using `gpt-4o-mini` via OpenRouter. Each call is a single-metric prompt — small and cheap.
 
 ### 5. Real-Time SSE Stream (`backend/app/api/routes/experiments.py`)
 
@@ -131,6 +137,7 @@ Frontend consumes this with the EventSource API to update the UI progressively.
 ### Backend
 | Technology | Why |
 |-----------|-----|
+| **RAGAS** | Industry-standard RAG evaluation framework; peer-reviewed metrics, reference-free, no custom judge prompt |
 | **FastAPI** | Native async, automatic OpenAPI docs, Pydantic v2 validation |
 | **uv** | 10–100× faster than pip for dependency resolution |
 | **Qdrant** | Best-in-class performance, Docker-native, supports named collections cleanly |
@@ -138,21 +145,23 @@ Frontend consumes this with the EventSource API to update the UI progressively.
 | **Redis** | Pub/sub for SSE event propagation across workers |
 | **asyncio + httpx** | True concurrent pipeline execution without thread overhead |
 | **Pydantic v2** | Schema validation for all pipeline configs and evaluation outputs |
+| **OpenRouter** | Universal LLM/embedding gateway — OpenAI SDK pointed at `openrouter.ai/api/v1`; covers gpt-4o-mini generation + OpenAI embedding models without a direct OpenAI key |
+| **Cohere SDK** | Direct SDK for Pipeline C embed + rerank — free trial covers dev usage |
+| **sentence-transformers** | Local models for Pipeline A (MiniLM embed) and Pipeline D (CrossEncoder rerank) — zero API cost |
 
 ### Frontend
 | Technology | Why |
 |-----------|-----|
-| **Next.js 14 (App Router)** | File-based routing, server components for initial data, TypeScript native |
-| **Tailwind CSS + shadcn/ui** | Rapid UI without custom CSS; accessible components out of the box |
-| **TanStack Query** | Intelligent caching, background refetch for experiment polling |
-| **Recharts** | Radar chart + bar chart support with good React integration |
+| **Next.js 16.2.6 (App Router)** | File-based routing, server components for initial data, TypeScript native |
+| **React 19.2.4** | Latest React; async params/searchParams — consult `frontend/AGENTS.md` before writing Next code |
+| **Tailwind CSS v4 + shadcn/ui** | `@import "tailwindcss"` + inline `@theme`; no `tailwind.config.ts`; radix-nova style, mauve base, remixicon icons |
+| **recharts** | Radar + bar chart support (added in Phase 5 via `shadcn add chart`) |
 | **EventSource API** | Native SSE consumption for real-time pipeline results |
 
 ### Infrastructure
 | Technology | Why |
 |-----------|-----|
-| **Docker Compose** | Orchestrates Qdrant + PostgreSQL + Redis + backend + frontend locally |
-| **Render** | Free tier for backend; no Kubernetes complexity for MVP |
+| **Docker Compose** | Orchestrates Qdrant + PostgreSQL + Redis locally — backend and frontend started manually |
 
 ## Directory Structure
 
@@ -193,31 +202,35 @@ rag_pipeline_optimizer/
 │       ├── conftest.py
 │       ├── test_pipelines.py
 │       └── test_evaluator.py
-├── frontend/
+├── frontend/                       # Next.js 16.2.6 / React 19.2.4 / Tailwind v4
 │   ├── package.json
-│   ├── next.config.ts
-│   ├── tailwind.config.ts
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx            # Landing / upload
-│   │   │   ├── experiments/
-│   │   │   │   ├── page.tsx        # Experiments list
-│   │   │   │   └── [id]/
-│   │   │   │       └── page.tsx    # Live results + dashboard
-│   │   │   └── layout.tsx
-│   │   ├── components/
-│   │   │   ├── upload/
-│   │   │   │   └── DocumentUploader.tsx
-│   │   │   ├── pipeline/
-│   │   │   │   ├── PipelineCard.tsx
-│   │   │   │   └── PipelineStream.tsx
-│   │   │   └── dashboard/
-│   │   │       ├── RadarChart.tsx
-│   │   │       ├── CostBar.tsx
-│   │   │       └── WinnerBadge.tsx
-│   │   └── lib/
-│   │       ├── api.ts              # API client (fetch wrappers)
-│   │       └── sse.ts              # SSE EventSource hook
+│   ├── next.config.ts              # /api proxy rewrite to :8000 (added Phase 5)
+│   ├── components.json             # shadcn: radix-nova, mauve, remixicon
+│   ├── app/
+│   │   ├── page.tsx                # Landing / upload
+│   │   ├── experiments/
+│   │   │   ├── page.tsx            # Experiments list
+│   │   │   └── [id]/
+│   │   │       └── page.tsx        # Live results + dashboard
+│   │   ├── layout.tsx
+│   │   └── globals.css             # Tailwind v4 @import + @theme (no tailwind.config.ts)
+│   ├── components/
+│   │   ├── ui/                     # shadcn components (button installed; chart/card/badge/progress added Phase 5)
+│   │   ├── theme-provider.tsx      # next-themes + 'd' key dark toggle
+│   │   ├── upload/
+│   │   │   └── DocumentUploader.tsx
+│   │   ├── pipeline/
+│   │   │   ├── PipelineCard.tsx
+│   │   │   └── PipelineStream.tsx
+│   │   └── dashboard/
+│   │       ├── RadarChart.tsx
+│   │       ├── CostBar.tsx
+│   │       └── WinnerBadge.tsx
+│   ├── lib/
+│   │   ├── utils.ts                # cn() helper
+│   │   ├── api.ts                  # API client (added Phase 5)
+│   │   └── sse.ts                  # useExperimentStream hook (added Phase 5)
+│   └── hooks/
 ├── docker/
 │   ├── docker-compose.yml
 │   ├── docker-compose.prod.yml
@@ -307,7 +320,7 @@ CREATE TABLE evaluations (
 8. Orchestrator spawns 4 async pipeline coroutines
 9. Each coroutine: query Qdrant → (optional rerank) → LLM call
 10. As each completes: publish SSE event → frontend card updates
-11. After all 4 complete: Evaluator calls GPT-4o judge
+11. After all 4 complete: RAGAS evaluates each pipeline independently (12 LLM calls total)
 12. Scores written to DB → SSE "experiment_done" event
 13. Frontend shows radar chart + ranked table + winner badge
 ```

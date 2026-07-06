@@ -1,0 +1,43 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "RAG Optimizer" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e5]
+        - generic [ref=e7]: RAG Optimizer
+      - link "History" [ref=e8] [cursor=pointer]:
+        - /url: /experiments
+        - img [ref=e9]
+        - text: History
+  - generic [ref=e70]:
+    - generic [ref=e71]:
+      - link "Back" [ref=e72] [cursor=pointer]:
+        - /url: /experiments
+        - img [ref=e73]
+        - text: Back
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]: Running
+          - generic [ref=e78]: 31542f70
+        - paragraph [ref=e79]: “what is DAgger how are we going to use it in the project and what is DPO”
+    - generic [ref=e80]:
+      - generic [ref=e82]:
+        - generic [ref=e83]: A
+        - generic [ref=e84]: Baseline
+        - generic [ref=e85]: MiniLM · 256 tok · no rerank
+      - generic [ref=e95]:
+        - generic [ref=e96]: B
+        - generic [ref=e97]: Standard
+        - generic [ref=e98]: ada-002 · 512 tok · no rerank
+      - generic [ref=e108]:
+        - generic [ref=e109]: C
+        - generic [ref=e110]: Advanced
+        - generic [ref=e111]: Cohere · 1024 tok · Cohere rerank
+      - generic [ref=e121]:
+        - generic [ref=e122]: D
+        - generic [ref=e123]: Semantic
+        - generic [ref=e124]: text-3-large · semantic · CrossEncoder
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e29] [cursor=pointer]:
+    - img [ref=e30]
+  - alert [ref=e33]

@@ -12,10 +12,7 @@ The consequence: RAG systems that "work" but never reach their potential. A syst
 RAGAS, TruLens, and DeepEval exist but require engineering investment to integrate. Most teams evaluate RAG manually: a PM asks 10 questions and "it seems okay." This doesn't scale.
 
 ### Problem 2: The Ground Truth Bottleneck
-Proper evaluation requires (question, ideal_answer) pairs — ground truth. Most companies don't have this. The solution is using an LLM-as-Judge (GPT-4o) for reference-free evaluation, but this must be done carefully to avoid:
-- **Position bias**: Judges consistently prefer the first response shown
-- **Verbosity bias**: Judges prefer longer, more confident-sounding answers
-- **Self-enhancement bias**: If the same model generates and judges, it favors its own style
+Proper evaluation requires (question, ideal_answer) pairs — ground truth. Most companies don't have this. RAGAS solves this with reference-free metrics: faithfulness, answer_relevancy, and context_precision can all be computed without pre-existing ground truth answers. Each pipeline is scored independently, eliminating position bias inherent in single-judge comparison prompts.
 
 ### Problem 3: Configuration Space is Enormous
 A RAG pipeline has at least 7 tunable dimensions:
@@ -47,12 +44,12 @@ The RAG Pipeline Optimizer provides:
 
 1. **Automated Pipeline Comparison**: Run 4 curated pipeline configurations against any document corpus, returning side-by-side quality scores in under 60 seconds.
 
-2. **Reference-Free LLM Evaluation**: Uses GPT-4o as an impartial judge with structured prompts that correct for known LLM evaluation biases.
+2. **Standardized RAG Evaluation via RAGAS**: Uses the RAGAS framework to compute peer-reviewed, industry-standard metrics. Each pipeline is evaluated independently — no position bias, no single-judge prompt to maintain.
 
-3. **Four Orthogonal Metrics** (based on RAGAS):
-   - **Faithfulness** (0–10): Is the answer hallucination-free and grounded in retrieved context?
-   - **Answer Relevance** (0–10): Does the answer fully address the question asked?
-   - **Context Precision** (0–10): Were the retrieved chunks actually useful (signal-to-noise of retrieval)?
+3. **Four Orthogonal Metrics**:
+   - **Faithfulness** (0–1): Is the answer hallucination-free and grounded in retrieved context? (RAGAS NLI-style claim extraction)
+   - **Answer Relevancy** (0–1): Does the answer fully address the question asked? (RAGAS embedding + LLM)
+   - **Context Precision** (0–1): Were the retrieved chunks actually useful — signal-to-noise of retrieval? (RAGAS LLM-based)
    - **Cost Efficiency** ($/1K queries): Real cost computation from token counts × current model pricing
 
 4. **Visual Radar Dashboard**: Radar charts, cost breakdown bars, and a ranked recommendation: *"For your HR Policy data, Pipeline C achieves 23% higher faithfulness than the baseline at only 8% higher cost."*

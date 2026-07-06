@@ -25,11 +25,13 @@ Every RAG system is built on unvalidated assumptions. Is `chunk_size=512` better
 
 ## Evaluation Metrics
 
-Each pipeline is scored by GPT-4o on:
-- **Faithfulness** — Is the answer grounded in the retrieved chunks? (hallucination check)
-- **Answer Relevance** — Does it fully address the question?
+Each pipeline is scored independently using **RAGAS** (industry-standard RAG evaluation framework):
+- **Faithfulness** — Is the answer grounded in the retrieved chunks? (NLI-style claim extraction)
+- **Answer Relevancy** — Does it fully address the question?
 - **Context Precision** — Were the retrieved chunks actually useful?
 - **Cost per 1K queries** — Computed from real token counts × current pricing
+
+No single LLM judge comparing all 4 pipelines — each is evaluated in isolation, eliminating position bias by design.
 
 ## Quick Start
 
@@ -84,14 +86,4 @@ Next.js (3000) → FastAPI (8000) → 4 async pipelines → GPT-4o judge
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full technical breakdown.
 
-## Deployment
 
-Docker images for both services. Deployable to Render with `render.yaml`:
-- Backend: Python web service
-- Frontend: Next.js static export or web service
-- Qdrant: Qdrant Cloud free tier (1GB)
-- PostgreSQL + Redis: Render managed services
-
-## Contributing
-
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the phased implementation roadmap.
