@@ -5,13 +5,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.config import settings
 from app.models.db import DocumentSet
 from app.models.schemas import DocumentSetResponse
-from app.services.ingestion import index_document_set, parse_document
+from app.services import vector_store as vs
+from app.services.ingestion import _PIPELINES, index_document_set, parse_document
 
 logger = logging.getLogger(__name__)
 
@@ -102,3 +104,20 @@ async def get_document(doc_set_id: str, db: AsyncSession = Depends(get_db)):
     if not ds:
         raise HTTPException(404, "Document set not found")
     return ds
+
+
+@router.delete("/{doc_set_id}", status_code=204)
+async def delete_document(doc_set_id: str, db: AsyncSession = Depends(get_db)):
+    ds = await db.get(DocumentSet, doc_set_id)
+    if not ds:
+        raise HTTPException(404, "Document set not found")
+
+    for pipeline in _PIPELINES:
+        await vs.delete_collection(f"{doc_set_id}_{pipeline.pipeline_id}")
+
+    await db.delete(ds)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Document set has experiments and cannot be deleted")

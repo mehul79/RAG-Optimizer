@@ -1,13 +1,18 @@
-from sentence_transformers import CrossEncoder as _CrossEncoder
+from typing import TYPE_CHECKING
 
 from app.services.rerankers.base import BaseReranker, RankedChunk
 
-_model: _CrossEncoder | None = None
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder as _CrossEncoder
+
+_model: "_CrossEncoder | None" = None
 
 
-def _get_model() -> _CrossEncoder:
+def _get_model() -> "_CrossEncoder":
     global _model
     if _model is None:
+        from sentence_transformers import CrossEncoder as _CrossEncoder
+
         _model = _CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
     return _model
 

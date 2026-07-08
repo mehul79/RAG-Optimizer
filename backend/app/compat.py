@@ -6,10 +6,18 @@ which was removed in langchain-community 0.4. Route it to langchain-google-verte
 import sys
 import types
 
+
+def __getattr__(name: str):
+    # ponytail: defers the actual langchain_google_vertexai import (pulls in
+    # google-cloud-aiplatform) until RAGAS first touches ChatVertexAI, instead
+    # of paying that cost on every server startup.
+    if name == "ChatVertexAI":
+        from langchain_google_vertexai import ChatVertexAI
+
+        return ChatVertexAI
+    raise AttributeError(name)
+
+
 _shim = types.ModuleType("langchain_community.chat_models.vertexai")
-try:
-    from langchain_google_vertexai import ChatVertexAI  # noqa: F401
-    _shim.ChatVertexAI = ChatVertexAI
-except ImportError:
-    pass
+_shim.__getattr__ = __getattr__
 sys.modules.setdefault("langchain_community.chat_models.vertexai", _shim)
