@@ -2,6 +2,10 @@
 
 Stop guessing which RAG configuration is best for your data. Upload your documents, run a query, and see side-by-side how 4 different chunking/embedding/reranking strategies perform — scored by an AI judge on accuracy, relevance, and cost.
 
+## Demo
+
+![4 pipelines answering the same question, scored side-by-side on faithfulness, relevancy, precision, cost, and latency](docs/assets/demo.gif)
+
 ## The Problem
 
 Every RAG system is built on unvalidated assumptions. Is `chunk_size=512` better than `1024` for your HR policies? Is Cohere's embedder worth the cost over a free local model? Without systematic evaluation, teams are guessing.

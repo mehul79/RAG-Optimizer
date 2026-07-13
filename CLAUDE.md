@@ -24,7 +24,7 @@ Compares 4 RAG pipeline configurations (different chunking, embedding, and reran
 uv sync
 
 # Run dev server (from /backend)
-uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8082 --reload
+uv run python -m uvicorn app.main:app --host 127.0.0.1 --port 8082 --reload --reload-exclude ".venv/*"
 
 # Add a dependency
 uv add <package>
