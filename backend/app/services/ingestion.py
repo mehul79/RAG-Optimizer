@@ -58,7 +58,9 @@ async def _index_one_pipeline(pipeline, doc_set_id: str, text: str) -> bool:
         await vs.upsert_chunks(collection, chunks, vectors)
         chunk_count, status, success = len(chunks), "ready", True
     except Exception as e:
-        logger.error("Pipeline %s indexing failed for %s: %s", pipeline.pipeline_id, doc_set_id, e)
+        logger.error(
+            "Pipeline %s indexing failed for %s: %s", pipeline.pipeline_id, doc_set_id, e, exc_info=True
+        )
         chunk_count, status, success = None, "failed", False
 
     async with AsyncSessionLocal() as session:
