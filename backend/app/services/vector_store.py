@@ -26,6 +26,9 @@ async def ensure_collection(name: str, vector_dim: int) -> None:
         )
 
 
+_UPSERT_BATCH_SIZE = 200  # keeps request payload well under Qdrant's 32MB HTTP limit
+
+
 async def upsert_chunks(collection: str, chunks: list[str], vectors: list[list[float]]) -> None:
     points = [
         PointStruct(
@@ -35,7 +38,9 @@ async def upsert_chunks(collection: str, chunks: list[str], vectors: list[list[f
         )
         for i in range(len(chunks))
     ]
-    await _get_client().upsert(collection_name=collection, points=points)
+    client = _get_client()
+    for i in range(0, len(points), _UPSERT_BATCH_SIZE):
+        await client.upsert(collection_name=collection, points=points[i : i + _UPSERT_BATCH_SIZE])
 
 
 async def search(collection: str, vector: list[float], top_k: int) -> list[str]:
